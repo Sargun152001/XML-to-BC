@@ -8,7 +8,7 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   async function getAccessToken(): Promise<string> {
-    const response = await fetch('http://localhost:3001/token', { method: 'POST' });
+    const response = await fetch('https://xml-to-bc-backend.onrender.com/token', { method: 'POST' });
     if (!response.ok) throw new Error('Failed to get access token');
     const data = await response.json();
     return data.access_token;
