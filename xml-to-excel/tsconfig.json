@@ -2,10 +2,17 @@
   "compilerOptions": {
     "target": "esnext",
     "module": "esnext",
+    "moduleResolution": "bundler",               // ✅ Required for Vite/Rollup
+    "allowImportingTsExtensions": true,          // ✅ Allows importing .ts/.tsx in paths
+    "noEmit": true,                              // ✅ Required for allowImportingTsExtensions
     "jsx": "react-jsx",
-    "moduleResolution": "node",
+    "strict": true,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true
-  }
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "types": ["vite/client"]
+  },
+  "include": ["src"]
 }
