@@ -6,9 +6,23 @@ const cors = require('cors');
 const app = express();
 const port = 3001;
 
+const allowedOrigins = [
+  'https://xml-to-bc-frontend.onrender.com',
+  'http://localhost:5173',
+];
+
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: function (origin, callback) {
+    // allow requests with no origin (like curl or mobile apps)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
 }));
+
 
 app.use(express.json());
 
