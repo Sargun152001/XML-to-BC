@@ -1,71 +1,72 @@
 import { XMLParser } from 'fast-xml-parser';
 
-self.onmessage = async function (e: MessageEvent<File>) {
-  const file = e.data;
+function safeFindArray(obj: any, key: string): any[] {
+  // Recursively search the object for a key that holds an array or object(s) with that key.
+  // We avoid deep recursion by iteration using a queue.
 
+  const queue = [obj];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current || typeof current !== 'object') continue;
+
+    if (current[key]) {
+      // Found key — return as array (convert single object to array)
+      if (Array.isArray(current[key])) return current[key];
+      return [current[key]];
+    }
+
+    // Add children to queue for scanning
+    for (const k in current) {
+      if (current.hasOwnProperty(k) && typeof current[k] === 'object') {
+        queue.push(current[k]);
+      }
+    }
+  }
+
+  return [];
+}
+
+self.onmessage = (e: MessageEvent<File>) => {
+  const file = e.data;
   const reader = new FileReader();
 
-  reader.onload = function () {
+  reader.onload = () => {
     try {
       const xmlText = reader.result as string;
 
+      // Parse entire XML safely, disabling value parsing to reduce complexity
       const parser = new XMLParser({
         ignoreAttributes: false,
         attributeNamePrefix: '@_',
-        allowBooleanAttributes: true,
+        parseTagValue: false,
         trimValues: true,
       });
 
       const jsonObj = parser.parse(xmlText);
 
-      function findFirstWBSNode(obj: any): any | null {
-        if (typeof obj !== 'object' || obj === null) return null;
-        for (const key in obj) {
-          if (key === 'WBS') {
-            return obj[key];
-          }
-          if (typeof obj[key] === 'object') {
-            const found = findFirstWBSNode(obj[key]);
-            if (found) return found;
-          }
-        }
-        return null;
-      }
+      // Extract arrays safely from anywhere inside parsed JSON
+      const activityArray = safeFindArray(jsonObj, 'Activity');
+      const resourceAssignmentArray = safeFindArray(jsonObj, 'ResourceAssignment');
+      const projectArray = safeFindArray(jsonObj, 'Project');
+      const resourceArray = safeFindArray(jsonObj, 'Resource');
+      const wbsArray = safeFindArray(jsonObj, 'WBS');
 
-      const firstWBSNode = findFirstWBSNode(jsonObj);
-
-      let wbsArray: any[] = [];
-
-      if (firstWBSNode) {
-        if (Array.isArray(firstWBSNode)) {
-          wbsArray = firstWBSNode;
-        } else {
-          wbsArray = [firstWBSNode];
-        }
-      } else {
-        self.postMessage({ status: 'error', message: 'No <WBS> elements found in XML.' });
-        return;
-      }
-
-      const cleanedData = wbsArray.map((item) => {
-        const cleanedItem: Record<string, string> = {};
-        for (const key in item) {
-          if (typeof item[key] === 'object' && item[key] !== null) {
-            cleanedItem[key] = JSON.stringify(item[key]);
-          } else {
-            cleanedItem[key] = item[key] ?? '';
-          }
-        }
-        return cleanedItem;
+      self.postMessage({
+        status: 'success',
+        data: {
+          activityArray,
+          resourceAssignmentArray,
+          projectArray,
+          resourceArray,
+          wbsArray,
+        },
       });
-
-      self.postMessage({ status: 'success', data: cleanedData });
-    } catch (error: any) {
-      self.postMessage({ status: 'error', message: error.message || 'Parsing error' });
+    } catch (err: any) {
+      self.postMessage({ status: 'error', message: err.message || 'Error parsing XML' });
     }
   };
 
-  reader.onerror = function () {
+  reader.onerror = () => {
     self.postMessage({ status: 'error', message: 'File reading failed' });
   };
 

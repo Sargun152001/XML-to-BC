@@ -9,10 +9,13 @@ export default defineConfig({
   server: {
     proxy: {
       '/token': {
-        target: 'http://localhost:3001',
+        target: 'https://xml-to-bc-backend.onrender.com/token',
         changeOrigin: true,
         secure: false,
       },
     },
+  },
+  worker: {
+    format: 'es',  // Make sure web worker bundles as ES modules (required for import.meta.url in worker constructor)
   },
 });

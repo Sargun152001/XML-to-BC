@@ -26,7 +26,7 @@ app.use(cors({
 
 app.use(express.json());
 
-// ✅ Load secrets from environment variables
+// Load secrets from environment variables
 const tenantId = process.env.TENANT_ID;
 const clientId = process.env.CLIENT_ID;
 const clientSecret = process.env.CLIENT_SECRET;

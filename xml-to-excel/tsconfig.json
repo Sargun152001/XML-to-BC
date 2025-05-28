@@ -2,9 +2,9 @@
   "compilerOptions": {
     "target": "esnext",
     "module": "esnext",
-    "moduleResolution": "bundler",               // ✅ Required for Vite/Rollup
-    "allowImportingTsExtensions": true,          // ✅ Allows importing .ts/.tsx in paths
-    "noEmit": true,                              // ✅ Required for allowImportingTsExtensions
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
@@ -12,7 +12,8 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "lib": ["DOM", "DOM.Iterable", "ESNext", "WebWorker"]  // Add WebWorker here for worker globals
   },
   "include": ["src"]
 }
