@@ -86,6 +86,7 @@ const extractActivityFields = (record: any) => ({
   uploadDate: selectedDate,
   name: textVal(record?.Name) || '',
   status: textVal(record?.Status) || '',
+  activityType: textVal(record?.activityType) || '',
   type: textVal(record?.Type) || '',
   calendarObjectId: parseIntOrNull(textVal(record?.CalendarObjectId)),
   projectObjectId: parseIntOrNull(textVal(record?.ProjectObjectId)),
@@ -509,9 +510,12 @@ console.log('Parsed Data from Worker:', data);
         setMessage('Sending WBS data...');
         await sendChunks(wbsArray, extractWBSFields, `${baseUrl}/p6wbsstagingroots`, 'wbss', 16);
 
-        setMessage('Sending Activity data...');
-        const allActivities = [...activityArray, ...baselineActivityArray];
-        await sendChunks(allActivities, extractActivityFields, `${baseUrl}/p6activityroots`, 'activitys', 16);
+      setMessage('Sending Activity data...');
+const allActivities = [
+  ...activityArray.map((item: any) => ({ ...item, activityType: 'Project' })),
+  ...baselineActivityArray.map((item: any) => ({ ...item, activityType: 'BaseLine' })),
+];
+await sendChunks(allActivities, extractActivityFields, `${baseUrl}/p6activityroots`, 'activitys', 16);
 
         setMessage('Sending ResourceAssignment data...');
         await sendChunks(resourceAssignmentArray, extractResourceAssignmentFields, `${baseUrl}/p6resourceassignmentroots`, 'resourceassignments', 16);
