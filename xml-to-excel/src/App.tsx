@@ -1,17 +1,26 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState ,useEffect} from 'react';
 
 function App() {
   const workerRef = useRef<Worker | null>(null);
   const [message, setMessage] = useState('');
+  const [progress, setProgress] = useState(0); // 0 to 100
   const [loading, setLoading] = useState(false);
-
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return today;
+      });
   const chunkSize = 500;
   const environment = '50b7a7db-965b-4a2e-8f58-39e635bf39b5';
-  const companyId = 'f08e82f1-72e8-ef11-9345-6045bd14c5d0';
-  const baseUrl = `https://api.businesscentral.dynamics.com/v2.0/${environment}/UAT/api/alletec/primavera/v2.0/companies(${companyId})`;
+  const companyId = '9f813277-f624-f011-9af7-002248cb4a4f';
+  const baseUrl = `https://api.businesscentral.dynamics.com/v2.0/${environment}/Dev/api/alletec/primavera/v2.0/companies(${companyId})`;
 
   async function getAccessToken(): Promise<string> {
-    const response = await fetch('https://xml-to-bc-backend.onrender.com/token', {
+    // const response = await fetch('http://localhost:3001/token', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    // });
+    const response = await fetch('https://xml-to-bc-backend-new.onrender.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -65,235 +74,235 @@ function parseDateOrDefault(value: string | null | undefined): string | null {
   return isNaN(date.getTime()) ? null : date.toISOString(); 
 }
 
+function isValidGuid(value: string | null | undefined): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value ?? '');
+}
+
+
 const extractActivityFields = (record: any) => ({
-  objectId: parseIntOrNull(record?.ObjectId),
-  guid: String(record?.GUID ?? ''),
-  id: String(record?.Id ?? ''),
-  name: String(record?.Name ?? ''),
-  status: String(record?.Status ?? ''),
-  type: String(record?.Type ?? ''),
-  calendarObjectId: parseIntOrNull(record?.CalendarObjectId),
-  projectObjectId: parseIntOrNull(record?.ProjectObjectId),
-  wbsObjectId: parseIntOrNull(record?.WBSObjectId),
-  startDate: toDateTimeOffset(record?.StartDate),
-  finishDate: toDateTimeOffset(record?.FinishDate),
-  plannedStartDate: toDateTimeOffset(record?.PlannedStartDate),
-  plannedFinishDate: toDateTimeOffset(record?.PlannedFinishDate),
-  remainingEarlyStartDate: toDateTimeOffset(record?.RemainingEarlyStartDate),
-  remainingEarlyFinishDate: toDateTimeOffset(record?.RemainingEarlyFinishDate),
-  remainingLateStartDate: toDateTimeOffset(record?.RemainingLateStartDate),
-  remainingLateFinishDate: toDateTimeOffset(record?.RemainingLateFinishDate),
-  actualStartDate: toDateTimeOffset(record?.ActualStartDate),
-  actualFinishDate: toDateTimeOffset(record?.ActualFinishDate),
-  expectedFinishDate: toDateTimeOffset(record?.ExpectedFinishDate),
-  primaryConstraintDate: toDateTimeOffset(record?.PrimaryConstraintDate),
-  secondaryConstraintDate: toDateTimeOffset(record?.SecondaryConstraintDate),
-  suspendDate: toDateTimeOffset(record?.SuspendDate),
-  resumeDate: toDateTimeOffset(record?.ResumeDate),
-  durationType: String(record?.DurationType ?? ''),
-  primaryConstraintType: String(record?.PrimaryConstraintType ?? ''),
-  secondaryConstraintType: String(record?.SecondaryConstraintType ?? ''),
-  percentCompleteType: String(record?.PercentCompleteType ?? ''),
-  levelingPriority: String(record?.LevelingPriority ?? ''),
-  notesToResources: String(record?.NotesToResources ?? ''),
-  feedback: String(record?.Feedback ?? ''),
-  isNewFeedback: parseBool(record?.IsNewFeedback),
-  reviewRequired: parseBool(record?.ReviewRequired),
-  autoComputeActuals: parseBool(record?.AutoComputeActuals),
-  estimatedWeight: parseFloatOrNull(record?.EstimatedWeight),
-  durationPercentComplete: parseFloatOrNull(record?.DurationPercentComplete),
-  scopePercentComplete: parseFloatOrNull(record?.ScopePercentComplete),
-  unitsPercentComplete: parseFloatOrNull(record?.UnitsPercentComplete),
-  nonLaborUnitsPerComplete: parseFloatOrNull(record?.NonLaborUnitsPercentComplete),
-  percentComplete: parseFloatOrNull(record?.PercentComplete),
-  physicalPercentComplete: parseFloatOrNull(record?.PhysicalPercentComplete),
-  actualDuration: parseFloatOrNull(record?.ActualDuration),
-  plannedDuration: parseFloatOrNull(record?.PlannedDuration),
-  remainingDuration: parseFloatOrNull(record?.RemainingDuration),
-  atCompletionDuration: parseFloatOrNull(record?.AtCompletionDuration),
-  plannedLaborUnits: parseFloatOrNull(record?.PlannedLaborUnits),
-  remainingLaborUnits: parseFloatOrNull(record?.RemainingLaborUnits),
-  atCompletionLaborUnits: parseFloatOrNull(record?.AtCompletionLaborUnits),
-  actualLaborUnits: parseFloatOrNull(record?.ActualLaborUnits),
-  actualThisPeriodLaborUnits: parseFloatOrNull(record?.ActualThisPeriodLaborUnits),
-  plannedNonLaborUnits: parseFloatOrNull(record?.PlannedNonLaborUnits),
-  remainingNonLaborUnits: parseFloatOrNull(record?.RemainingNonLaborUnits),
-  atCompletionNonLaborUnits: parseFloatOrNull(record?.AtCompletionNonLaborUnits),
-  actualNonLaborUnits: parseFloatOrNull(record?.ActualNonLaborUnits),
-  actThisPeriodNonLaborUnits: parseFloatOrNull(record?.ActualThisPeriodNonLaborUnits),
-  plannedLaborCost: parseFloatOrNull(record?.PlannedLaborCost),
-  remainingLaborCost: parseFloatOrNull(record?.RemainingLaborCost),
-  atCompletionLaborCost: parseFloatOrNull(record?.AtCompletionLaborCost),
-  actualLaborCost: parseFloatOrNull(record?.ActualLaborCost),
-  actualThisPeriodLaborCost: parseFloatOrNull(record?.ActualThisPeriodLaborCost),
-  plannedNonLaborCost: parseFloatOrNull(record?.PlannedNonLaborCost),
-  remainingNonLaborCost: parseFloatOrNull(record?.RemainingNonLaborCost),
-  atCompletionNonLaborCost: parseFloatOrNull(record?.AtCompletionNonLaborCost),
-  actualNonLaborCost: parseFloatOrNull(record?.ActualNonLaborCost),
-  actThisPeriodNonLaborCost: parseFloatOrNull(record?.ActualThisPeriodNonLaborCost),
-  atCompletionExpenseCost: parseFloatOrNull(record?.AtCompletionExpenseCost),
-  primaryResourceObjectId: parseIntOrNull(record?.PrimaryResourceObjectId),
-  udfTypeObjectId: parseIntOrNull(record?.UDF?.TypeObjectId),
-  udfTextValue: String(record?.UDF?.TextValue ?? ''),
-  codeTypeObjectId1: parseIntOrNull(record?.Code?.[0]?.TypeObjectId),
-  codeValueObjectId1: parseIntOrNull(record?.Code?.[0]?.ValueObjectId),
-  codeTypeObjectId2: parseIntOrNull(record?.Code?.[1]?.TypeObjectId),
-  codeValueObjectId2: parseIntOrNull(record?.Code?.[1]?.ValueObjectId),
-  codeTypeObjectId3: parseIntOrNull(record?.Code?.[2]?.TypeObjectId),
-  codeValueObjectId3: parseIntOrNull(record?.Code?.[2]?.ValueObjectId),
-  codeTypeObjectId4: parseIntOrNull(record?.Code?.[3]?.TypeObjectId),
-  codeValueObjectId4: parseIntOrNull(record?.Code?.[3]?.ValueObjectId),
-  codeTypeObjectId5: parseIntOrNull(record?.Code?.[4]?.TypeObjectId),
-  codeValueObjectId5: parseIntOrNull(record?.Code?.[4]?.ValueObjectId),
-  codeTypeObjectId6: parseIntOrNull(record?.Code?.[5]?.TypeObjectId),
-  codeValueObjectId6: parseIntOrNull(record?.Code?.[5]?.ValueObjectId),
-  codeTypeObjectId7: parseIntOrNull(record?.Code?.[6]?.TypeObjectId),
-  codeValueObjectId7: parseIntOrNull(record?.Code?.[6]?.ValueObjectId),
-  codeTypeObjectId8: parseIntOrNull(record?.Code?.[7]?.TypeObjectId),
-  codeValueObjectId8: parseIntOrNull(record?.Code?.[7]?.ValueObjectId),
-  codeTypeObjectId9: parseIntOrNull(record?.Code?.[8]?.TypeObjectId),
-  codeValueObjectId9: parseIntOrNull(record?.Code?.[8]?.ValueObjectId),
-  uploadDate: new Date().toISOString().split('T')[0],
+  objectId: parseIntOrNull(textVal(record?.ObjectId)),
+  guid: isValidGuid(textVal(record?.GUID)) ? textVal(record.GUID) : null,
+  id: textVal(record?.Id) || '',
+  uploadDate: selectedDate,
+  name: textVal(record?.Name) || '',
+  status: textVal(record?.Status) || '',
+  type: textVal(record?.Type) || '',
+  calendarObjectId: parseIntOrNull(textVal(record?.CalendarObjectId)),
+  projectObjectId: parseIntOrNull(textVal(record?.ProjectObjectId)),
+  wbsObjectId: parseIntOrNull(textVal(record?.WBSObjectId)),
+  startDate: toDateTimeOffset(textVal(record?.StartDate)),
+  finishDate: toDateTimeOffset(textVal(record?.FinishDate)),
+  plannedStartDate: toDateTimeOffset(textVal(record?.PlannedStartDate)),
+  plannedFinishDate: toDateTimeOffset(textVal(record?.PlannedFinishDate)),
+  remainingEarlyStartDate: toDateTimeOffset(textVal(record?.RemainingEarlyStartDate)),
+  remainingEarlyFinishDate: toDateTimeOffset(textVal(record?.RemainingEarlyFinishDate)),
+  remainingLateStartDate: toDateTimeOffset(textVal(record?.RemainingLateStartDate)),
+  remainingLateFinishDate: toDateTimeOffset(textVal(record?.RemainingLateFinishDate)),
+  actualStartDate: toDateTimeOffset(textVal(record?.ActualStartDate)),
+  actualFinishDate: toDateTimeOffset(textVal(record?.ActualFinishDate)),
+  expectedFinishDate: toDateTimeOffset(textVal(record?.ExpectedFinishDate)),
+  primaryConstraintDate: toDateTimeOffset(textVal(record?.PrimaryConstraintDate)),
+  secondaryConstraintDate: toDateTimeOffset(textVal(record?.SecondaryConstraintDate)),
+  suspendDate: toDateTimeOffset(textVal(record?.SuspendDate)),
+  resumeDate: toDateTimeOffset(textVal(record?.ResumeDate)),
+  durationType: textVal(record?.DurationType) || '',
+  primaryConstraintType: textVal(record?.PrimaryConstraintType) || '',
+  secondaryConstraintType: textVal(record?.SecondaryConstraintType) || '',
+  percentCompleteType: textVal(record?.PercentCompleteType) || '',
+  levelingPriority: textVal(record?.LevelingPriority) || '',
+  notesToResources: textVal(record?.NotesToResources) || '',
+  feedback: textVal(record?.Feedback) || '',
+  isNewFeedback: parseBool(textVal(record?.IsNewFeedback)),
+  reviewRequired: parseBool(textVal(record?.ReviewRequired)),
+  autoComputeActuals: parseBool(textVal(record?.AutoComputeActuals)),
+  estimatedWeight: parseFloatOrNull(textVal(record?.EstimatedWeight)),
+  durationPercentComplete: parseFloatOrNull(textVal(record?.DurationPercentComplete)),
+  scopePercentComplete: parseFloatOrNull(textVal(record?.ScopePercentComplete)),
+  unitsPercentComplete: parseFloatOrNull(textVal(record?.UnitsPercentComplete)),
+  nonLaborUnitsPerComplete: parseFloatOrNull(textVal(record?.NonLaborUnitsPercentComplete)),
+  percentComplete: parseFloatOrNull(textVal(record?.PercentComplete)),
+  physicalPercentComplete: parseFloatOrNull(textVal(record?.PhysicalPercentComplete)),
+  actualDuration: parseFloatOrNull(textVal(record?.ActualDuration)),
+  plannedDuration: parseFloatOrNull(textVal(record?.PlannedDuration)),
+  remainingDuration: parseFloatOrNull(textVal(record?.RemainingDuration)),
+  atCompletionDuration: parseFloatOrNull(textVal(record?.AtCompletionDuration)),
+  plannedLaborUnits: parseFloatOrNull(textVal(record?.PlannedLaborUnits)),
+  remainingLaborUnits: parseFloatOrNull(textVal(record?.RemainingLaborUnits)),
+  atCompletionLaborUnits: parseFloatOrNull(textVal(record?.AtCompletionLaborUnits)),
+  actualLaborUnits: parseFloatOrNull(textVal(record?.ActualLaborUnits)),
+  actualThisPeriodLaborUnits: parseFloatOrNull(textVal(record?.ActualThisPeriodLaborUnits)),
+  plannedNonLaborUnits: parseFloatOrNull(textVal(record?.PlannedNonLaborUnits)),
+  remainingNonLaborUnits: parseFloatOrNull(textVal(record?.RemainingNonLaborUnits)),
+  atCompletionNonLaborUnits: parseFloatOrNull(textVal(record?.AtCompletionNonLaborUnits)),
+  actualNonLaborUnits: parseFloatOrNull(textVal(record?.ActualNonLaborUnits)),
+  actThisPeriodNonLaborUnits: parseFloatOrNull(textVal(record?.ActualThisPeriodNonLaborUnits)),
+  plannedLaborCost: parseFloatOrNull(textVal(record?.PlannedLaborCost)),
+  remainingLaborCost: parseFloatOrNull(textVal(record?.RemainingLaborCost)),
+  atCompletionLaborCost: parseFloatOrNull(textVal(record?.AtCompletionLaborCost)),
+  actualLaborCost: parseFloatOrNull(textVal(record?.ActualLaborCost)),
+  actualThisPeriodLaborCost: parseFloatOrNull(textVal(record?.ActualThisPeriodLaborCost)),
+  plannedNonLaborCost: parseFloatOrNull(textVal(record?.PlannedNonLaborCost)),
+  remainingNonLaborCost: parseFloatOrNull(textVal(record?.RemainingNonLaborCost)),
+  atCompletionNonLaborCost: parseFloatOrNull(textVal(record?.AtCompletionNonLaborCost)),
+  actualNonLaborCost: parseFloatOrNull(textVal(record?.ActualNonLaborCost)),
+  actThisPeriodNonLaborCost: parseFloatOrNull(textVal(record?.ActualThisPeriodNonLaborCost)),
+  atCompletionExpenseCost: parseFloatOrNull(textVal(record?.AtCompletionExpenseCost)),
+  primaryResourceObjectId: parseIntOrNull(textVal(record?.PrimaryResourceObjectId)),
+  udfTypeObjectId: parseIntOrNull(textVal(record?.UDF?.TypeObjectId)),
+  udfTextValue: textVal(record?.UDF?.TextValue) || '',
+  ...[...Array(9)].reduce((acc, _, i) => ({
+    ...acc,
+    [`codeTypeObjectId${i + 1}`]: parseIntOrNull(textVal(record?.Code?.[i]?.TypeObjectId)),
+    [`codeValueObjectId${i + 1}`]: parseIntOrNull(textVal(record?.Code?.[i]?.ValueObjectId)),
+  }), {}),
 });
 
 
+
 const extractResourceAssignmentFields = (record: any) => ({
-  ObjectId: parseIntOrNull(record?.ObjectId),
-  GUID: (record?.GUID ?? "").replace(/[{}]/g, ''),  // remove curly braces exactly as snippet
-  ProjectObjectId: parseIntOrNull(record?.ProjectObjectId),
-  WBSObjectId: parseIntOrNull(record?.WBSObjectId),
-  ResourceObjectId: parseIntOrNull(record?.ResourceObjectId),
-  ActivityObjectId: parseIntOrNull(record?.ActivityObjectId),
-  CostAccountObjectId: parseIntOrNull(record?.CostAccountObjectId),
-  ResourceCurveObjectId: parseIntOrNull(record?.ResourceCurveObjectId),
-  RoleObjectId: parseIntOrNull(record?.RoleObjectId),
+  ObjectId: parseIntOrNull(textVal(record?.ObjectId)),
+  guid: isValidGuid(textVal(record?.GUID)) ? textVal(record?.GUID) : null,
+  ProjectObjectId: parseIntOrNull(textVal(record?.ProjectObjectId)),
+  WBSObjectId: parseIntOrNull(textVal(record?.WBSObjectId)),
+  ResourceObjectId: parseIntOrNull(textVal(record?.ResourceObjectId)),
+  ActivityObjectId: parseIntOrNull(textVal(record?.ActivityObjectId)),
+  CostAccountObjectId: parseIntOrNull(textVal(record?.CostAccountObjectId)),
+  ResourceCurveObjectId: parseIntOrNull(textVal(record?.ResourceCurveObjectId)),
+  RoleObjectId: parseIntOrNull(textVal(record?.RoleObjectId)),
 
-  ActualCost: parseFloatOrNull(record?.ActualCost),
-  ActualCurve: typeof record?.ActualCurve === "string" ? record.ActualCurve : "",
-  ActualFinishDate: parseDateOrDefault(record?.ActualFinishDate),
-  ActualOvertimeCost: parseFloatOrNull(record?.ActualOvertimeCost),
-  ActualOvertimeUnits: parseFloatOrNull(record?.ActualOvertimeUnits),
-  ActualRegularCost: parseFloatOrNull(record?.ActualRegularCost),
-  ActualRegularUnits: parseFloatOrNull(record?.ActualRegularUnits),
-  ActualStartDate: parseDateOrDefault(record?.ActualStartDate),
-  ActualThisPeriodCost: parseFloatOrNull(record?.ActualThisPeriodCost),
-  ActualThisPeriodUnits: parseFloatOrNull(record?.ActualThisPeriodUnits),
-  ActualUnits: parseFloatOrNull(record?.ActualUnits),
+  ActualCost: parseFloatOrNull(textVal(record?.ActualCost)),
+  ActualCurve: textVal(record?.ActualCurve) || '',
+  ActualFinishDate: parseDateOrDefault(textVal(record?.ActualFinishDate)),
+  ActualOvertimeCost: parseFloatOrNull(textVal(record?.ActualOvertimeCost)),
+  ActualOvertimeUnits: parseFloatOrNull(textVal(record?.ActualOvertimeUnits)),
+  ActualRegularCost: parseFloatOrNull(textVal(record?.ActualRegularCost)),
+  ActualRegularUnits: parseFloatOrNull(textVal(record?.ActualRegularUnits)),
+  ActualStartDate: parseDateOrDefault(textVal(record?.ActualStartDate)),
+  ActualThisPeriodCost: parseFloatOrNull(textVal(record?.ActualThisPeriodCost)),
+  ActualThisPeriodUnits: parseFloatOrNull(textVal(record?.ActualThisPeriodUnits)),
+  ActualUnits: parseFloatOrNull(textVal(record?.ActualUnits)),
 
-  AtCompletionCost: parseFloatOrNull(record?.AtCompletionCost),
-  AtCompletionUnits: parseFloatOrNull(record?.AtCompletionUnits),
+  AtCompletionCost: parseFloatOrNull(textVal(record?.AtCompletionCost)),
+  AtCompletionUnits: parseFloatOrNull(textVal(record?.AtCompletionUnits)),
 
-  DrivingActivityDatesFlag: parseBool(record?.DrivingActivityDatesFlag),
-  IsCostUnitsLinked: parseBool(record?.IsCostUnitsLinked),
-  IsPrimaryResource: parseBool(record?.IsPrimaryResource),
+  DrivingActivityDatesFlag: parseBool(textVal(record?.DrivingActivityDatesFlag)),
+  IsCostUnitsLinked: parseBool(textVal(record?.IsCostUnitsLinked)),
+  IsPrimaryResource: parseBool(textVal(record?.IsPrimaryResource)),
 
-  FinishDate: parseDateOrDefault(record?.FinishDate),
-  StartDate: parseDateOrDefault(record?.StartDate),
+  FinishDate: parseDateOrDefault(textVal(record?.FinishDate)),
+  StartDate: parseDateOrDefault(textVal(record?.StartDate)),
 
-  PlannedCost: parseFloatOrNull(record?.PlannedCost),
-  PlannedCurve: typeof record?.PlannedCurve === "string" ? record.PlannedCurve : "",
-  PlannedFinishDate: parseDateOrDefault(record?.PlannedFinishDate),
-  PlannedLag: parseIntOrNull(record?.PlannedLag),
-  PlannedStartDate: parseDateOrDefault(record?.PlannedStartDate),
-  PlannedUnits: parseFloatOrNull(record?.PlannedUnits),
-  PlannedUnitsPerTime: parseFloatOrNull(record?.PlannedUnitsPerTime),
+  PlannedCost: parseFloatOrNull(textVal(record?.PlannedCost)),
+  PlannedCurve: textVal(record?.PlannedCurve) || '',
+  PlannedFinishDate: parseDateOrDefault(textVal(record?.PlannedFinishDate)),
+  PlannedLag: parseIntOrNull(textVal(record?.PlannedLag)),
+  PlannedStartDate: parseDateOrDefault(textVal(record?.PlannedStartDate)),
+  PlannedUnits: parseFloatOrNull(textVal(record?.PlannedUnits)),
+  PlannedUnitsPerTime: parseFloatOrNull(textVal(record?.PlannedUnitsPerTime)),
 
-  RemainingCost: parseFloatOrNull(record?.RemainingCost),
- RemainingCurve: typeof record?.RemainingCurve === "string" ? record.RemainingCurve : "",
-  RemainingDuration: parseFloatOrNull(record?.RemainingDuration),
-  RemainingFinishDate: parseDateOrDefault(record?.RemainingFinishDate),
-  RemainingLag: parseIntOrNull(record?.RemainingLag),
-  RemainingStartDate: parseDateOrDefault(record?.RemainingStartDate),
-  RemainingUnits: parseFloatOrNull(record?.RemainingUnits),
-  RemainingUnitsPerTime: parseFloatOrNull(record?.RemainingUnitsPerTime),
+  RemainingCost: parseFloatOrNull(textVal(record?.RemainingCost)),
+  RemainingCurve: textVal(record?.RemainingCurve) || '',
+  RemainingDuration: parseFloatOrNull(textVal(record?.RemainingDuration)),
+  RemainingFinishDate: parseDateOrDefault(textVal(record?.RemainingFinishDate)),
+  RemainingLag: parseIntOrNull(textVal(record?.RemainingLag)),
+  RemainingStartDate: parseDateOrDefault(textVal(record?.RemainingStartDate)),
+  RemainingUnits: parseFloatOrNull(textVal(record?.RemainingUnits)),
+  RemainingUnitsPerTime: parseFloatOrNull(textVal(record?.RemainingUnitsPerTime)),
 
-  OvertimeFactor: parseFloatOrNull(record?.OvertimeFactor),
-  PricePerUnit: parseFloatOrNull(record?.PricePerUnit),
+  OvertimeFactor: parseFloatOrNull(textVal(record?.OvertimeFactor)),
+  PricePerUnit: parseFloatOrNull(textVal(record?.PricePerUnit)),
 
-  Proficiency: record?.Proficiency ?? "",
-  RateSource: record?.RateSource ?? "",
-  RateType: record?.RateType ?? "",
+  Proficiency: textVal(record?.Proficiency) || '',
+  RateSource: textVal(record?.RateSource) || '',
+  RateType: textVal(record?.RateType) || '',
 
-  UnitsPercentComplete: parseFloatOrNull(record?.UnitsPercentComplete),
-  ResourceType: record?.ResourceType ?? "",
-
-  UploadDate: new Date().toISOString().split("T")[0], // use current date as YYYY-MM-DD string
+  UnitsPercentComplete: parseFloatOrNull(textVal(record?.UnitsPercentComplete)),
+  ResourceType: textVal(record?.ResourceType) || '',
+   uploadDate: selectedDate,
 });
 
 
 
 const extractProjectFields = (record: any) => ({
-    objectId: parseIntOrNull(record?.ObjectId ?? ''),
-    wbsObjectId: parseIntOrNull(record?.WBSObjectId ?? ''),
-    actDefCalendarObjectId: parseIntOrNull(record?.ActivityDefaultCalendarObjectId ?? ''),
-    actDefCostAccountObjectId: parseIntOrNull(record?.ActivityDefaultCostAccountObjectId ?? ''),
-    actDefPercentCompleteType: record?.ActivityDefaultPercentCompleteType ?? '',
-    actDefaultPricePerUnit: parseFloatOrNull(record?.ActivityDefaultPricePerUnit ?? ''),
-    actIdBasedOnSelectedAct: parseBool(record?.ActivityIdBasedOnSelectedActivity ?? ''),
-    actPerComplBaseOnActStep: parseBool(record?.ActivityPercentCompleteBasedOnActivitySteps ?? ''),
-    activityDefaultActivityType: record?.ActivityDefaultActivityType ?? '',
-    activityDefaultDurationType: record?.ActivityDefaultDurationType ?? '',
-    activityIdIncrement: parseIntOrNull(record?.ActivityIdIncrement ?? ''),
-    activityIdPrefix: record?.ActivityIdPrefix ?? '',
-    activityIdSuffix: record?.ActivityIdSuffix ?? '',
-    addActualToRemaining: parseBool(record?.AddActualToRemaining ?? ''),
-    addedBy: record?.AddedBy ?? '',
-    allowNegActualUnitsFlag: parseBool(record?.AllowNegativeActualUnitsFlag ?? ''),
-    allowStatusReview: parseBool(record?.AllowStatusReview ?? ''),
-    annualDiscountRate: parseFloatOrNull(record?.AnnualDiscountRate ?? ''),
-    anticipatedFinishDate: formatDate(record?.AnticipatedFinishDate ?? ''),
-    anticipatedStartDate: formatDate(record?.AnticipatedStartDate ?? ''),
-    assigDefaultDrivingFlag: parseBool(record?.AssignmentDefaultDrivingFlag ?? ''),
-    assignmentDefaultRateType: record?.AssignmentDefaultRateType ?? '',
-    checkOutStatus: parseBool(record?.CheckOutStatus ?? ''),
-    costQuantityRecalculateFlag: parseBool(record?.CostQuantityRecalculateFlag ?? ''),
-    criticalActivityFloatLimit: parseIntOrNull(record?.CriticalActivityFloatLimit ?? ''),
-    criticalActivityPathType: record?.CriticalActivityPathType ?? '',
-    currBLProjectObjectId: parseIntOrNull(record?.CurrentBaselineProjectObjectId ?? ''),
-    dataDate: formatDate(record?.DataDate ?? ''),
-    dateAdded: formatDate(record?.DateAdded ?? ''),
-    defaultPriceTimeUnits: record?.DefaultPriceTimeUnits ?? '',
-    discountApplicationPeriod: typeof record?.discountApplicationPeriod === 'string' ? record.discountApplicationPeriod : '',
-    earnedValueComputeType: record?.EarnedValueComputeType ?? '',
-    earnedValueETCComputeType: record?.EarnedValueETCComputeType ?? '',
-    earnedValueETCUserValue: parseFloatOrNull(record?.EarnedValueETCUserValue ?? ''),
-    earnedValueUserPercent: parseFloatOrNull(record?.EarnedValueUserPercent ?? ''),
-    enableSummarization: parseBool(record?.EnableSummarization ?? ''),
-    financialPeriodTemplateId: parseIntOrNull(record?.FinancialPeriodTemplateId ?? ''),
-    fiscalYearStartMonth: parseIntOrNull(record?.FiscalYearStartMonth ?? ''),
-    guid: record?.GUID ?? '00000000-0000-0000-0000-000000000000',
-    id: record?.Id ?? '',
-    independentETCLaborUnits: parseFloatOrNull(record?.IndependentETCLaborUnits ?? ''),
-    independentETCTotalCost: parseFloatOrNull(record?.IndependentETCTotalCost ?? ''),
-    lastFinPeriodObjectId: parseIntOrNull(record?.LastFinancialPeriodObjectId ?? ''),
-    levelingPriority: parseIntOrNull(record?.LevelingPriority ?? ''),
-    linkActualToActThisPeriod: parseBool(record?.LinkActualToActualThisPeriod ?? ''),
-    linkPerCompleteWithActual: parseBool(record?.LinkPercentCompleteWithActual ?? ''),
-    linkPlannedAndAtComplFlag: parseBool(record?.LinkPlannedAndAtCompletionFlag ?? ''),
-    mustFinishByDate: formatDate(record?.MustFinishByDate ?? ''),
-    name: record?.Name ?? '',
-    obsObjectId: parseIntOrNull(record?.OBSObjectId ?? ''),
-    originalBudget: parseFloatOrNull(record?.OriginalBudget ?? ''),
-    parentEPSObjectId: parseIntOrNull(record?.ParentEPSObjectId ?? ''),
-    plannedStartDate: formatDate(record?.PlannedStartDate ?? ''),
-    primResCanMarkActAsCompl: parseBool(record?.PrimaryResourcesCanMarkActivitiesAsCompleted ?? ''),
-    projectForecastStartDate: formatDate(record?.ProjectForecastStartDate ?? ''),
-    resCanAssignThemselToAct: parseBool(record?.ResourcesCanAssignThemselvesToActivities ?? ''),
-    resCanBeAssToSameActMoreOnce: parseBool(record?.ResourceCanBeAssignedToSameActivityMoreThanOnce ?? ''),
-    resetPlannToRemainingFlag: parseBool(record?.ResetPlannedToRemainingFlag ?? ''),
-    scheduledFinishDate: formatDate(record?.ScheduledFinishDate ?? ''),
-    status: record?.Status ?? '',
-    strategicPriority: parseIntOrNull(record?.StrategicPriority ?? ''),
-    summarizeToWBSLevel: parseIntOrNull(record?.SummarizeToWBSLevel ?? ''),
-    summaryLevel: parseIntOrNull(record?.SummaryLevel ?? ''),
-    uploadDate: new Date().toISOString().split('T')[0],
-    useProjBLForEarnedValue: parseBool(record?.UseProjectBaselineForEarnedValue ?? ''),
-    wbsCodeSeparator: record?.WBSCodeSeparator ?? '',
-    webSiteRootDirectory: getPrimitiveValue(record?.WebSiteRootDirectory, 'Path') ?? '',
-   webSiteURL: getPrimitiveValue(record?.WebSiteURL, 'Url') ?? '',
-
+ objectId: parseIntOrNull(textVal(record?.ObjectId)),
+  wbsObjectId: parseIntOrNull(textVal(record?.WBSObjectId)),
+  actDefCalendarObjectId: parseIntOrNull(textVal(record?.ActivityDefaultCalendarObjectId)),
+  actDefCostAccountObjectId: parseIntOrNull(textVal(record?.ActivityDefaultCostAccountObjectId)),
+  actDefPercentCompleteType: textVal(record?.ActivityDefaultPercentCompleteType) ?? '',
+  actDefaultPricePerUnit: parseFloatOrNull(textVal(record?.ActivityDefaultPricePerUnit)),
+  actIdBasedOnSelectedAct: parseBool(textVal(record?.ActivityIdBasedOnSelectedActivity)),
+  actPerComplBaseOnActStep: parseBool(textVal(record?.ActivityPercentCompleteBasedOnActivitySteps)),
+  activityDefaultActivityType: textVal(record?.ActivityDefaultActivityType) ?? '',
+  activityDefaultDurationType: textVal(record?.ActivityDefaultDurationType) ?? '',
+  activityIdIncrement: parseIntOrNull(textVal(record?.ActivityIdIncrement)),
+  activityIdPrefix: textVal(record?.ActivityIdPrefix) ?? '',
+  activityIdSuffix: textVal(record?.ActivityIdSuffix) ?? '',
+  addActualToRemaining: parseBool(textVal(record?.AddActualToRemaining)),
+  addedBy: textVal(record?.AddedBy) ?? '',
+  allowNegActualUnitsFlag: parseBool(textVal(record?.AllowNegativeActualUnitsFlag)),
+  allowStatusReview: parseBool(textVal(record?.AllowStatusReview)),
+  annualDiscountRate: parseFloatOrNull(textVal(record?.AnnualDiscountRate)),
+  anticipatedFinishDate: formatDate(textVal(record?.AnticipatedFinishDate)),
+  anticipatedStartDate: formatDate(textVal(record?.AnticipatedStartDate)),
+  assigDefaultDrivingFlag: parseBool(textVal(record?.AssignmentDefaultDrivingFlag)),
+  assignmentDefaultRateType: textVal(record?.AssignmentDefaultRateType) ?? '',
+  checkOutStatus: parseBool(textVal(record?.CheckOutStatus)),
+  costQuantityRecalculateFlag: parseBool(textVal(record?.CostQuantityRecalculateFlag)),
+  criticalActivityFloatLimit: parseIntOrNull(textVal(record?.CriticalActivityFloatLimit)),
+  criticalActivityPathType: textVal(record?.CriticalActivityPathType) ?? '',
+  currBLProjectObjectId: parseIntOrNull(textVal(record?.CurrentBaselineProjectObjectId)),
+  dataDate: formatDate(textVal(record?.DataDate)),
+  dateAdded: formatDate(textVal(record?.DateAdded)),
+  defaultPriceTimeUnits: textVal(record?.DefaultPriceTimeUnits) ?? '',
+  discountApplicationPeriod: textVal(record?.DiscountApplicationPeriod) ?? '',
+  earnedValueComputeType: textVal(record?.EarnedValueComputeType) ?? '',
+  earnedValueETCComputeType: textVal(record?.EarnedValueETCComputeType) ?? '',
+  earnedValueETCUserValue: parseFloatOrNull(textVal(record?.EarnedValueETCUserValue)),
+  earnedValueUserPercent: parseFloatOrNull(textVal(record?.EarnedValueUserPercent)),
+  enableSummarization: parseBool(textVal(record?.EnableSummarization)),
+  financialPeriodTemplateId: parseIntOrNull(textVal(record?.FinancialPeriodTemplateId)),
+  fiscalYearStartMonth: parseIntOrNull(textVal(record?.FiscalYearStartMonth)),
+  guid: textVal(record?.GUID) ?? '00000000-0000-0000-0000-000000000000',
+  id: textVal(record?.Id) ?? '',
+  independentETCLaborUnits: parseFloatOrNull(textVal(record?.IndependentETCLaborUnits)),
+  independentETCTotalCost: parseFloatOrNull(textVal(record?.IndependentETCTotalCost)),
+  lastFinPeriodObjectId: parseIntOrNull(textVal(record?.LastFinancialPeriodObjectId)),
+  levelingPriority: parseIntOrNull(textVal(record?.LevelingPriority)),
+  linkActualToActThisPeriod: parseBool(textVal(record?.LinkActualToActualThisPeriod)),
+  linkPerCompleteWithActual: parseBool(textVal(record?.LinkPercentCompleteWithActual)),
+  linkPlannedAndAtComplFlag: parseBool(textVal(record?.LinkPlannedAndAtCompletionFlag)),
+  mustFinishByDate: formatDate(textVal(record?.MustFinishByDate)),
+  name: textVal(record?.Name) ?? '',
+  obsObjectId: parseIntOrNull(textVal(record?.OBSObjectId)),
+  originalBudget: parseFloatOrNull(textVal(record?.OriginalBudget)),
+  parentEPSObjectId: parseIntOrNull(textVal(record?.ParentEPSObjectId)),
+  plannedStartDate: formatDate(textVal(record?.PlannedStartDate)),
+  primResCanMarkActAsCompl: parseBool(textVal(record?.PrimaryResourcesCanMarkActivitiesAsCompleted)),
+  projectForecastStartDate: formatDate(textVal(record?.ProjectForecastStartDate)),
+  resCanAssignThemselToAct: parseBool(textVal(record?.ResourcesCanAssignThemselvesToActivities)),
+  resCanBeAssToSameActMoreOnce: parseBool(textVal(record?.ResourceCanBeAssignedToSameActivityMoreThanOnce)),
+  resetPlannToRemainingFlag: parseBool(textVal(record?.ResetPlannedToRemainingFlag)),
+  scheduledFinishDate: formatDate(textVal(record?.ScheduledFinishDate)),
+  status: ['Active', 'Inactive'].includes(textVal(record?.Status) ?? '') ? textVal(record?.Status) : 'Active',
+  strategicPriority: parseIntOrNull(textVal(record?.StrategicPriority)),
+  summarizeToWBSLevel: parseIntOrNull(textVal(record?.SummarizeToWBSLevel)),
+  summaryLevel: parseIntOrNull(textVal(record?.SummaryLevel)),
+  uploadDate: selectedDate,
+  useProjBLForEarnedValue: parseBool(textVal(record?.UseProjectBaselineForEarnedValue)),
+  wbsCodeSeparator: textVal(record?.WBSCodeSeparator) ?? '',
+  webSiteRootDirectory: textVal(record?.WebSiteRootDirectory) ?? '',
+  webSiteURL: textVal(record?.WebSiteURL) ?? '',
 });
 
+const textVal = (v: any): string | null => {
+  if (v == null) return null;
+  if (Array.isArray(v)) return textVal(v[0]);
+  if (typeof v === 'object') {
+    if ('text' in v) return v.text;
+    return ''; // empty/self-closing tag
+  }
+  return v;
+};
 
 const formatDate = (val: any): string | null => {
   if (!val) return null;
@@ -311,135 +320,75 @@ const getPrimitiveValue = (field: any, propName?: string) => {
 };
 
 const extractResourceFields = (record: any) => ({
-  objectId: parseIntOrNull(record?.ObjectId),
-  autoComputeActuals: parseBool(record?.AutoComputeActuals),
-  calculateCostFromUnits: parseBool(record?.CalculateCostFromUnits),
-  calendarObjectId: parseIntOrNull(record?.CalendarObjectId),
-  currencyObjectId: parseIntOrNull(record?.CurrencyObjectId),
-  defaultUnitsPerTime: parseFloatOrNull(record?.DefaultUnitsPerTime),
+ objectId: parseIntOrNull(textVal(record?.ObjectId)),
+  autoComputeActuals: parseBool(textVal(record?.AutoComputeActuals)),
+  calculateCostFromUnits: parseBool(textVal(record?.CalculateCostFromUnits)),
+  calendarObjectId: parseIntOrNull(textVal(record?.CalendarObjectId)),
+  currencyObjectId: parseIntOrNull(textVal(record?.CurrencyObjectId)),
+  defaultUnitsPerTime: parseFloatOrNull(textVal(record?.DefaultUnitsPerTime)),
 
   emailAddress: getPrimitiveValue(record?.EmailAddress, 'address'),
   employeeId: getPrimitiveValue(record?.EmployeeId, 'id'),
-  GUID: (record?.GUID ?? "").replace(/[{}]/g, ''),
-  id: record?.Id || null,
+  guid: isValidGuid(textVal(record?.GUID)) ? textVal(record?.GUID) : null,
+  id: textVal(record?.Id),
 
-  isActive: parseBool(record?.IsActive),
-  isOverTimeAllowed: parseBool(record?.IsOverTimeAllowed),
-  name: record?.Name?.trim() || null,
+  isActive: parseBool(textVal(record?.IsActive)),
+  isOverTimeAllowed: parseBool(textVal(record?.IsOverTimeAllowed)),
+  name: textVal(record?.Name)?.trim() || null,
   officePhone: getPrimitiveValue(record?.OfficePhone, 'number'),
   otherPhone: getPrimitiveValue(record?.OtherPhone, 'number'),
+  overtimeFactor: parseFloatOrNull(textVal(record?.OvertimeFactor)),
+  parentObjectId: parseIntOrNull(textVal(record?.ParentObjectId)),
+  primaryRoleObjectId: parseIntOrNull(textVal(record?.PrimaryRoleObjectId)),
 
-  overtimeFactor: parseFloatOrNull(record?.OvertimeFactor),
-  parentObjectId: parseIntOrNull(record?.ParentObjectId),
-  primaryRoleObjectId: parseIntOrNull(record?.PrimaryRoleObjectId),
+  resourceNotes: getPrimitiveValue(record?.ResourceNotes),
+  resourceType: textVal(record?.ResourceType),
+  sequenceNumber: parseIntOrNull(textVal(record?.SequenceNumber)),
+  shiftObjectId: parseIntOrNull(textVal(record?.ShiftObjectId)),
+  timesheetApprMngrObjectId: parseIntOrNull(textVal(record?.TimesheetApprMngrObjectId)),
+  title: getPrimitiveValue(record?.Title),
+  unitOfMeasureObjectId: parseIntOrNull(textVal(record?.UnitOfMeasureObjectId)),
 
-  resourceNotes: getPrimitiveValue(record?.ResourceNotes),  // <-- fix here
-
-  resourceType: record?.ResourceType || null,
-  sequenceNumber: parseIntOrNull(record?.SequenceNumber),
-  shiftObjectId: parseIntOrNull(record?.ShiftObjectId),
-  timesheetApprMngrObjectId: parseIntOrNull(record?.TimesheetApprMngrObjectId),
-    title: getPrimitiveValue(record?.Title),
-  unitOfMeasureObjectId: parseIntOrNull(record?.UnitOfMeasureObjectId),
-
-  uploadDate: new Date().toISOString().split('T')[0],
-
-  useTimesheets: parseBool(record?.UseTimesheets),
-  userObjectId: parseIntOrNull(record?.UserObjectId),
+   uploadDate: selectedDate,
+  useTimesheets: parseBool(textVal(record?.UseTimesheets)),
+  userObjectId: parseIntOrNull(textVal(record?.UserObjectId)),
 });
 
 
 
  const extractWBSFields = (record: any) => ({
-  ProjectObjectId: record.ProjectObjectId !== undefined && record.ProjectObjectId !== ''
-    ? String(record.ProjectObjectId)
-    : null,
+  ProjectObjectId: textVal(record?.ProjectObjectId),
+  ObjectId: parseIntOrNull(textVal(record?.ObjectId)),
+  ParentObjectId: parseIntOrNull(textVal(record?.ParentObjectId)),
 
-  ObjectId: record.ObjectId !== undefined && record.ObjectId !== ''
-    ? String(record.ObjectId)
-    : null,
+  AnticipatedFinishDate: (() => {
+    const d = new Date(textVal(record?.AnticipatedFinishDate) || '');
+    return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+  })(),
 
-  ParentObjectId: record.ParentObjectId !== undefined && record.ParentObjectId !== ''
-    ? parseInt(record.ParentObjectId)
-    : null,
+  AnticipatedStartDate: (() => {
+    const d = new Date(textVal(record?.AnticipatedStartDate) || '');
+    return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+  })(),
 
-  AnticipatedFinishDate:
-    record.AnticipatedFinishDate
-      ? (() => {
-          const d = new Date(record.AnticipatedFinishDate);
-          return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
-        })()
-      : null,
-
-  AnticipatedStartDate:
-    record.AnticipatedStartDate
-      ? (() => {
-          const d = new Date(record.AnticipatedStartDate);
-          return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
-        })()
-      : null,
-
-  Code: String(record.Code ?? ''),
-
-  EarnedValueComputeType: String(record.EarnedValueComputeType ?? ''),
-
-  EarnedValueETCComputeType: String(record.EarnedValueETCComputeType ?? ''),
-
-  EarnedValueETCUserValue:
-    record.EarnedValueETCUserValue !== undefined && record.EarnedValueETCUserValue !== ''
-      ? parseFloat(record.EarnedValueETCUserValue)
-      : null,
-
-  EarnedValueUserPercent:
-    record.EarnedValueUserPercent !== undefined && record.EarnedValueUserPercent !== ''
-      ? parseFloat(record.EarnedValueUserPercent)
-      : null,
-
-  IndependentETCLaborUnits:
-    record.IndependentETCLaborUnits !== undefined && record.IndependentETCLaborUnits !== ''
-      ? parseFloat(record.IndependentETCLaborUnits)
-      : null,
-
-  IndependentETCTotalCost:
-    record.IndependentETCTotalCost !== undefined && record.IndependentETCTotalCost !== ''
-      ? parseFloat(record.IndependentETCTotalCost)
-      : null,
-
-  Name: String(record.Name ?? ''),
-
-  OBSObjectId: record.OBSObjectId !== undefined && record.OBSObjectId !== ''
-    ? String(record.OBSObjectId)
-    : null,
-
-  OriginalBudget:
-    record.OriginalBudget !== undefined && record.OriginalBudget !== ''
-      ? parseFloat(record.OriginalBudget)
-      : null,
-
-  SequenceNumber:
-    record.SequenceNumber !== undefined && record.SequenceNumber !== ''
-      ? parseInt(record.SequenceNumber)
-      : null,
-
-  Status: record.Status !== undefined && record.Status !== ''
-    ? String(record.Status)
-    : null,
-
-  UploadDate: record.UploadDate
-    ? (() => {
-        const d = new Date(record.UploadDate);
-        return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
-      })()
-    : new Date().toISOString().split('T')[0],
-
-  WBSCategoryObjectId:
-    record.WBSCategoryObjectId !== undefined && record.WBSCategoryObjectId !== ''
-      ? parseInt(record.WBSCategoryObjectId)
-      : null,
+  Code: textVal(record?.Code) || '',
+  EarnedValueComputeType: textVal(record?.EarnedValueComputeType) || '',
+  EarnedValueETCComputeType: textVal(record?.EarnedValueETCComputeType) || '',
+  EarnedValueETCUserValue: parseFloatOrNull(textVal(record?.EarnedValueETCUserValue)),
+  EarnedValueUserPercent: parseFloatOrNull(textVal(record?.EarnedValueUserPercent)),
+  IndependentETCLaborUnits: parseFloatOrNull(textVal(record?.IndependentETCLaborUnits)),
+  IndependentETCTotalCost: parseFloatOrNull(textVal(record?.IndependentETCTotalCost)),
+  Name: textVal(record?.Name) || '',
+  OBSObjectId: textVal(record?.OBSObjectId),
+  OriginalBudget: parseFloatOrNull(textVal(record?.OriginalBudget)),
+  SequenceNumber: parseIntOrNull(textVal(record?.SequenceNumber)),
+  Status: textVal(record?.Status),
+ uploadDate: selectedDate,
+  WBSCategoryObjectId: parseIntOrNull(textVal(record?.WBSCategoryObjectId)),
 });
 
 
-  const sendRecord = async (url: string, record: any, token: string) => {
+const sendRecord = async (url: string, record: any, token: string) => {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -452,8 +401,8 @@ const extractResourceFields = (record: any) => ({
     return response.json();
   };
 
-  const sendActivityChunk = async (url: string, chunk: any[], token: string) => {
-    const payload = { activitys: chunk };
+  const sendChunk = async (url: string, chunk: any[], token: string, payloadKey: string) => {
+    const payload = { [payloadKey]: chunk };
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -466,191 +415,309 @@ const extractResourceFields = (record: any) => ({
     return response.json();
   };
 
-  const sendResourceAssignmentChunk = async (url: string, chunk: any[], token: string) => {
-  const payload = { resourceassignments: chunk };
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) throw new Error(await response.text());
-  return response.json();
-};
-
-  const sendResourceChunk = async (url: string, chunk: any[], token: string) => {
-    const payload = { resources: chunk };
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) throw new Error(await response.text());
-    return response.json();
-  };
-
-const sendWBSChunk = async (url: string, chunk: any[], token: string) => {
-  const payload = { wbss: chunk };
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) throw new Error(await response.text());
-  return response.json();
-};
-
-
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setMessage('Parsing XML file...');
-    setLoading(true);
-
+  useEffect(() => {
     if (!workerRef.current) {
       workerRef.current = new Worker(new URL('./xmlWorker.ts', import.meta.url), { type: 'module' });
+
       workerRef.current.onerror = (e) => {
         setMessage(`Worker error: ${e.message}`);
         setLoading(false);
       };
-    }
 
-    workerRef.current.onmessage = async (event) => {
-      const { status, data, message: errorMsg } = event.data;
+      workerRef.current.onmessage = async (event) => {
+        const { status, data, message: errorMsg ,progress: parsingProgress} = event.data;
+if (status === 'progress') {
+    setProgress(parsingProgress); // Parsing: 0–20%
+    return;
+  }
 
-      if (status !== 'success') {
-        setMessage('XML Parse Error: ' + errorMsg);
-        setLoading(false);
-        return;
-      }
-
-      const { wbsArray, projectArray, resourceArray, activityArray, resourceAssignmentArray } = data;
+        if (status !== 'success') {
+          setMessage('XML Parse Error: ' + errorMsg);
+          setLoading(false);
+          return;
+        }
+  
+        const { wbsArray, projectArray, resourceArray, activityArray, resourceAssignmentArray , baselineActivityArray, baselineProjectArray,baselineResourceArray,baselineWbsArray, baselineRaArray} = data;
+console.log('Parsed Data from Worker:', data);
+  if (
+    wbsArray.length === 0 &&
+    projectArray.length === 0 &&
+    resourceArray.length === 0 &&
+    activityArray.length === 0 &&
+    resourceAssignmentArray.length === 0
+  ) {
+    setMessage('❗ Parsed XML has no usable data. Please check file format.');
+    setLoading(false);
+    return;
+  }
 
       try {
         setMessage('Fetching access token...');
         const token = await getAccessToken();
+        let progressVal = 20; // after parsing
 
-        setMessage('Sending Activity data in chunks...');
-        for (let i = 0; i < activityArray.length; i += chunkSize) {
-          const chunk = activityArray
-            .slice(i, i + chunkSize)
-            .map((rec: any) => extractActivityFields(rec))
-            .filter((rec: any) => rec !== null);
-          if (chunk.length > 0)
-            await sendActivityChunk(`${baseUrl}/p6activityroots`, chunk, token);
-        }
+        const updateProgress = (delta: number) => {
+          progressVal += delta;
+          setProgress(Math.min(Math.round(progressVal), 100));
+        };
 
-      setMessage('Sending ResourceAssignment data in chunks...');
-const validateRecord = (rec: any) => {
-  for (const [key, value] of Object.entries(rec)) {
-    if (typeof value === 'object' && value !== null) {
-      console.error(`Invalid nested object found at field "${key}":`, value);
-    }
-  }
-};
+        const validateRecord = (rec: any) => {
+          for (const [key, value] of Object.entries(rec)) {
+            if (typeof value === 'object' && value !== null) {
+              console.error(`Invalid nested object at "${key}":`, value);
+            }
+          }
+        };
 
-for (let i = 0; i < resourceAssignmentArray.length; i += chunkSize) {
-  const chunk = resourceAssignmentArray
-    .slice(i, i + chunkSize)
-    .map((rec: any) => {
-      const mapped = extractResourceAssignmentFields(rec);
-      validateRecord(mapped);
-      return mapped;
-    })
-    .filter((rec: any) => rec !== null);
+        const sendChunks = async (
+          array: any[],
+          extractFn: any,
+          url: string,
+          key: string,
+          progressIncrement: number
+        ) => {
+          const totalChunks = Math.ceil(array.length / chunkSize);
+          if (totalChunks === 0) return;
 
-  if (chunk.length > 0)
-    await sendResourceAssignmentChunk(`${baseUrl}/p6resourceassignmentroots`, chunk, token);
-}
+          for (let i = 0; i < array.length; i += chunkSize) {
+            const chunk = array
+              .slice(i, i + chunkSize)
+              .map(extractFn)
+              .filter((rec: any): rec is object => {
+                validateRecord(rec);
+                return rec !== null;
+              });
 
+            if (chunk.length > 0) {
+              await sendChunk(url, chunk, token, key);
+            }
 
+            updateProgress(progressIncrement / totalChunks);
+          }
+        };
+
+   setMessage('Sending Resource data...');
+        await sendChunks(resourceArray, extractResourceFields, `${baseUrl}/p6resources`, 'resources', 16);
 
  setMessage('Sending Project data...');
         for (const record of projectArray) {
           const obj = extractProjectFields(record);
           await sendRecord(`${baseUrl}/projects`, obj, token);
         }
+        updateProgress(16);
 
+        setMessage('Sending WBS data...');
+        await sendChunks(wbsArray, extractWBSFields, `${baseUrl}/p6wbsstagingroots`, 'wbss', 16);
 
-setMessage('Sending Resource data in chunks...');
-for (let i = 0; i < resourceArray.length; i += chunkSize) {
-  console.log(resourceArray)
-  const chunk = resourceArray
-    .slice(i, i + chunkSize)
-    .map((rec: any) => extractResourceFields(rec))
-    .filter((rec: any) => rec !== null);
-  if (chunk.length > 0)
-    console.log("chunk",chunk)
-    await sendResourceChunk(`${baseUrl}/p6resources`, chunk, token);
-}
+        setMessage('Sending Activity data...');
+        const allActivities = [...activityArray, ...baselineActivityArray];
+        await sendChunks(allActivities, extractActivityFields, `${baseUrl}/p6activityroots`, 'activitys', 16);
 
+        setMessage('Sending ResourceAssignment data...');
+        await sendChunks(resourceAssignmentArray, extractResourceAssignmentFields, `${baseUrl}/p6resourceassignmentroots`, 'resourceassignments', 16);
 
+      
 
-setMessage('Sending WBS data in chunks...');
-for (let i = 0; i < wbsArray.length; i += chunkSize) {
-  const chunk = wbsArray
-    .slice(i, i + chunkSize)
-    .map((rec: any) => extractWBSFields(rec))
-    .filter((rec: any) => rec !== null);
-  if (chunk.length > 0)
-    await sendWBSChunk(
-      `https://api.businesscentral.dynamics.com/v2.0/50b7a7db-965b-4a2e-8f58-39e635bf39b5/UAT/api/alletec/primavera/v2.0/companies(f08e82f1-72e8-ef11-9345-6045bd14c5d0)/p6wbsstagingroots`,
-      chunk,
-      token
-    );
-}
-        setMessage('All data successfully sent to Business Central.');
+        setMessage('✅ All data successfully sent to Business Central.');
+        setProgress(100);
       } catch (err: any) {
         console.error(err);
-        setMessage(`Error: ${err.message}`);
+        setMessage(`❌ Error: ${err.message}`);
       }
 
       setLoading(false);
     };
+    }
+  }, []);
 
-    workerRef.current.postMessage(file);
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setSelectedFile(file);
+    setMessage('✅ File selected. Ready to send to Business Central.');
+  };
+
+  const handleSendToBC = () => {
+    if (!selectedFile) {
+      setMessage('❗ Please select a file first.');
+      return;
+    }
+
+    setMessage('🔄 Parsing XML file...');
+    setLoading(true);
+    workerRef.current?.postMessage(selectedFile);
   };
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
-      <h1>XML to Business Central Uploader</h1>
-      <input type="file" accept=".xml" onChange={handleFileUpload} />
+  <div
+    style={{
+      minHeight: '100vh',
+      backgroundColor: '#f3f4f6',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      fontFamily: `'Segoe UI', Tahoma, Geneva, Verdana, sans-serif`,
+      padding: '2rem',
+    }}
+  >
+    <div
+      style={{
+        backgroundColor: 'white',
+        padding: '24px',
+        borderRadius: '12px',
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.08)',
+        border: '1px solid #e5e7eb',
+        width: '100%',
+        maxWidth: '600px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+      }}
+    >
+      <h2
+        style={{
+          fontSize: '24px',
+          fontWeight: 600,
+          color: '#1f2937',
+          marginBottom: '24px',
+        }}
+      >
+        Upload Your File
+      </h2>
+
+      {/* File Input */}
+      <label
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          color: '#374151',
+          fontWeight: 500,
+          marginBottom: '24px',
+          width: '100%',
+        }}
+      >
+        Select File:
+        <input
+          type="file"
+          accept=".xml"
+          onChange={handleFileUpload}
+          style={{
+            marginTop: '8px',
+            fontSize: '14px',
+            padding: '6px',
+            backgroundColor: '#f3f4f6',
+            border: '1px solid #d1d5db',
+            borderRadius: '6px',
+            width: '100%',
+            color: '#4b5563',
+          }}
+        />
+      </label>
+
+      {/* Date Input */}
+      <label
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          color: '#4d4d4d',
+          fontWeight: 'bold',
+          width: '100%',
+          marginBottom: '16px',
+        }}
+      >
+        Select Upload Date:
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          max={new Date().toISOString().split('T')[0]}
+          style={{
+            marginTop: '8px',
+            padding: '6px',
+            borderRadius: '4px',
+            border: '1px solid #ccc',
+            width: '100%',
+            fontSize: '14px',
+          }}
+        />
+      </label>
+
+      {/* Submit Button */}
       <button
-  onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    handleFileUpload;
-  }}
-  className="submit-button"
-  style={{
-    marginTop: '1rem',
-    padding: '0.5rem 1rem',
-    fontSize: '1rem',
-    border: '2px solid #0078D4',
-    color: '#0078D4',
-    backgroundColor: 'transparent',
-    borderRadius: '0.4rem',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
-  }}
->
-  Send to Business Central
-</button>
+        onClick={handleSendToBC}
+        style={{
+          width: '100%',
+          padding: '12px 16px',
+          backgroundColor: '#0078D4',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          fontWeight: 500,
+          cursor: 'pointer',
+          transition: 'background-color 0.2s ease',
+          fontSize: '16px',
+          marginTop: '12px',
+        }}
+        onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#005a9e')}
+        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#0078D4')}
+      >
+        Process Primavera Data
+      </button>
 
+      {/* Status Message */}
+      {message && (
+        <p
+          style={{
+            marginTop: '16px',
+            fontSize: '14px',
+            color: '#374151',
+            backgroundColor: '#f9fafb',
+            padding: '12px 16px',
+            border: '1px solid #e5e7eb',
+            borderRadius: '6px',
+            width: '100%',
+            textAlign: 'center',
+          }}
+        >
+          {message}
+        </p>
+      )}
 
-      {loading && <p style={{ color: 'blue' }}>Working...</p>}
-      {message && <p>{message}</p>}
+      {/* Progress Bar */}
+      {progress > 0 && (
+  <div
+    style={{
+      width: '100%',
+      backgroundColor: '#d1d1d1',
+      borderRadius: '6px',
+      marginTop: '16px',
+      height: '28px',
+      overflow: 'hidden',
+      boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.2)',
+    }}
+  >
+    <div
+      style={{
+        height: '100%',
+        width: `${progress}%`,
+        backgroundColor: '#4caf50', // ✅ Green color always
+        color: 'white',
+        textAlign: 'center',
+        lineHeight: '28px',
+        transition: 'width 0.3s ease',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {progress}%
     </div>
-  );
+  </div>
+      )}
+    </div>
+  </div>
+);
 }
 
 export default App;

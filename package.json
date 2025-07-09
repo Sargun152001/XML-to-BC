@@ -10,6 +10,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "dotenv": "^16.5.0"
+    "clarinet": "^0.12.6",
+    "dotenv": "^16.5.0",
+    "sax": "^1.4.1"
   }
 }

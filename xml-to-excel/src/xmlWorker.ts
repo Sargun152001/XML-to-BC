@@ -1,74 +1,131 @@
-import { XMLParser } from 'fast-xml-parser';
+import { SaxesParser, SaxesTagPlain } from 'saxes';
 
-function safeFindArray(obj: any, key: string): any[] {
-  // Recursively search the object for a key that holds an array or object(s) with that key.
-  // We avoid deep recursion by iteration using a queue.
-
-  const queue = [obj];
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (!current || typeof current !== 'object') continue;
-
-    if (current[key]) {
-      // Found key — return as array (convert single object to array)
-      if (Array.isArray(current[key])) return current[key];
-      return [current[key]];
-    }
-
-    // Add children to queue for scanning
-    for (const k in current) {
-      if (current.hasOwnProperty(k) && typeof current[k] === 'object') {
-        queue.push(current[k]);
-      }
-    }
-  }
-
-  return [];
+function stripNS(tagName: string): string {
+  return tagName.split(':').pop() || '';
 }
 
-self.onmessage = (e: MessageEvent<File>) => {
+self.onmessage = async (e: MessageEvent<File>) => {
   const file = e.data;
-  const reader = new FileReader();
+  const decoder = new TextDecoder();
+  const reader = file.stream().getReader();
+  const totalSize = file.size;
+  let bytesRead = 0;
 
-  reader.onload = () => {
-    try {
-      const xmlText = reader.result as string;
+  const activityArr: any[] = [];
+  const raArr: any[] = [];
+  const projectArr: any[] = [];
+  const resourceArr: any[] = [];
+  const wbsArr: any[] = [];
+  const baselineActivityArr: any[] = [];
+  const baselineRaArr: any[] = [];
+  const baselineProjectArr: any[] = [];
+  const baselineResourceArr: any[] = [];
+  const baselineWbsArr: any[] = [];
 
-      // Parse entire XML safely, disabling value parsing to reduce complexity
-      const parser = new XMLParser({
-        ignoreAttributes: false,
-        attributeNamePrefix: '@_',
-        parseTagValue: false,
-        trimValues: true,
-      });
+  const stack: any[] = [];
+  let currentText = '';
+  let insideBaselineProject = false;
 
-      const jsonObj = parser.parse(xmlText);
+  const parser = new SaxesParser({ xmlns: false });
 
-      // Extract arrays safely from anywhere inside parsed JSON
-      const activityArray = safeFindArray(jsonObj, 'Activity');
-      const resourceAssignmentArray = safeFindArray(jsonObj, 'ResourceAssignment');
-      const projectArray = safeFindArray(jsonObj, 'Project');
-      const resourceArray = safeFindArray(jsonObj, 'Resource');
-      const wbsArray = safeFindArray(jsonObj, 'WBS');
+  parser.on('opentag', (tag: SaxesTagPlain) => {
+    const tagName = stripNS(tag.name);
+    const obj: any = { ...tag.attributes, __tag: tagName };
+    if (tagName === 'BaselineProject') insideBaselineProject = true;
+    stack.push({ tagName, obj });
+    currentText = '';
+  });
 
-      self.postMessage({
-        status: 'success',
-        data: {
-          activityArray,
-          resourceAssignmentArray,
-          projectArray,
-          resourceArray,
-          wbsArray,
-        },
-      });
-    } catch (err: any) {
-      self.postMessage({ status: 'error', message: err.message || 'Error parsing XML' });
+  parser.on('text', (text: string) => {
+    currentText += text;
+  });
+
+  parser.on('cdata', (data: string) => {
+    currentText += data;
+  });
+
+  parser.on('closetag', (tag: SaxesTagPlain) => {
+    const tagName = stripNS(tag.name);
+    const { obj } = stack.pop()!;
+    obj.text = currentText.trim() || null;
+    currentText = '';
+
+    if (tagName === 'BaselineProject') {
+      baselineProjectArr.push(obj);
+      insideBaselineProject = false;
+      return;
     }
-  };
 
-  reader.onerror = () => {
-    self.postMessage({ status: 'error', message: 'File reading failed' });
-  };
+    if (['Activity', 'ResourceAssignment', 'Project', 'Resource', 'WBS'].includes(tagName)) {
+      if (insideBaselineProject) {
+        switch (tagName) {
+          case 'Activity': baselineActivityArr.push(obj); break;
+          case 'ResourceAssignment': baselineRaArr.push(obj); break;
+          case 'Project': baselineProjectArr.push(obj); break;
+          case 'Resource': baselineResourceArr.push(obj); break;
+          case 'WBS': baselineWbsArr.push(obj); break;
+        }
+      } else {
+        switch (tagName) {
+          case 'Activity': activityArr.push(obj); break;
+          case 'ResourceAssignment': raArr.push(obj); break;
+          case 'Project': projectArr.push(obj); break;
+          case 'Resource': resourceArr.push(obj); break;
+          case 'WBS': wbsArr.push(obj); break;
+        }
+      }
+    }
 
-  reader.readAsText(file);
+    if (stack.length) {
+      const parent = stack[stack.length - 1].obj;
+      const content = obj.text ?? obj;
+      if (!parent[tagName]) {
+        parent[tagName] = content;
+      } else if (Array.isArray(parent[tagName])) {
+        parent[tagName].push(content);
+      } else {
+        parent[tagName] = [parent[tagName], content];
+      }
+    }
+  });
+
+  parser.on('error', (err: Error) => {
+    self.postMessage({ status: 'error', message: `SAX parser error: ${err.message}` });
+    parser.close();
+  });
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytesRead += value.length;
+      parser.write(decoder.decode(value, { stream: true }));
+
+      const progress = Math.min(20, Math.floor((bytesRead / totalSize) * 20));
+      self.postMessage({ status: 'progress', progress });
+    }
+
+    parser.close();
+
+    self.postMessage({
+      status: 'success',
+      data: {
+        baselineActivityArray: baselineActivityArr,
+        baselineProjectArray: baselineProjectArr,
+        baselineResourceArray: baselineResourceArr,
+        baselineWbsArray: baselineWbsArr,
+        baselineRaArray: baselineRaArr,
+        activityArray: activityArr,
+        resourceAssignmentArray: raArr,
+        projectArray: projectArr,
+        resourceArray: resourceArr,
+        wbsArray: wbsArr,
+      },
+    });
+  } catch (err: any) {
+    self.postMessage({
+      status: 'error',
+      message: err instanceof Error ? err.message : 'Unknown error during XML parsing',
+    });
+  }
 };
