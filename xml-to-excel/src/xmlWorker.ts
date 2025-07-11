@@ -22,6 +22,8 @@ self.onmessage = async (e: MessageEvent<File>) => {
   const baselineResourceArr: any[] = [];
   const baselineWbsArr: any[] = [];
 
+  const calendarArr: any[] = [];
+
   const stack: any[] = [];
   let currentText = '';
   let insideBaselineProject = false;
@@ -49,6 +51,106 @@ self.onmessage = async (e: MessageEvent<File>) => {
     const { obj } = stack.pop()!;
     obj.text = currentText.trim() || null;
     currentText = '';
+
+    if (tagName === 'Calendar') {
+      // console.log("Calendar OBJ: ", obj)
+      const calendarName = obj.Name ?? '';
+      const objectId = obj.ObjectId ?? '';
+      const hoursPerDay = obj.HoursPerDay ?? '';
+      const hoursPerWeek = obj.HoursPerWeek ?? '';
+      const hoursPerMonth = obj.HoursPerMonth ?? '';
+      const hoursPerYear = obj.HoursPerYear ?? '';
+
+      // ---- StandardWorkWeek
+      const standardWorkWeek = obj.StandardWorkWeek;
+      // ---- StandardWorkHours
+      const standardWorkHours = Array.isArray(standardWorkWeek?.StandardWorkHours)
+        ? standardWorkWeek.StandardWorkHours
+        : standardWorkWeek?.StandardWorkHours ? [standardWorkWeek.StandardWorkHours] : [];
+
+      for (const swh of standardWorkHours) {
+        const day = swh.DayOfWeek ?? '';
+
+        const workTimes = Array.isArray(swh.WorkTime)
+          ? swh.WorkTime
+          : swh.WorkTime ? [swh.WorkTime] : [];
+
+        if (workTimes.length === 0) {
+          calendarArr.push({
+            Type: 'Work',
+            CalendarName: calendarName,
+            ObjectId: objectId,
+            HoursPerDay: hoursPerDay,
+            HoursPerWeek: hoursPerWeek,
+            HoursPerMonth: hoursPerMonth,
+            HoursPerYear: hoursPerYear,
+            DayOrDate: day,
+            StartTime: '',
+            FinishTime: '',
+          });
+        } else {
+          for (const wt of workTimes) {
+            calendarArr.push({
+              Type: 'Work',
+              CalendarName: calendarName,
+              ObjectId: objectId,
+              HoursPerDay: hoursPerDay,
+              HoursPerWeek: hoursPerWeek,
+              HoursPerMonth: hoursPerMonth,
+              HoursPerYear: hoursPerYear,
+              DayOrDate: day,
+              StartTime: wt?.Start?.text ?? wt?.Start ?? '',
+              FinishTime: wt?.Finish?.text ?? wt?.Finish ?? '',
+            });
+          }
+        }
+      }
+
+      // ---- HolidayOrExceptions
+      const holidayOrExceptions = obj.HolidayOrExceptions;
+      // ---- HolidayOrException
+      const holidayOrException = Array.isArray(holidayOrExceptions?.HolidayOrException)
+        ? holidayOrExceptions.HolidayOrException
+        : holidayOrExceptions?.HolidayOrException ? [holidayOrExceptions.HolidayOrException] : [];
+
+      for (const hex of holidayOrException) {
+        const date = hex.Date ?? '';
+        const workTimes = Array.isArray(hex.WorkTime)
+          ? hex.WorkTime
+          : hex.WorkTime ? [hex.WorkTime] : [];
+
+        if (workTimes.length === 0) {
+          calendarArr.push({
+            Type: 'Holiday',
+            CalendarName: calendarName,
+            ObjectId: objectId,
+            HoursPerDay: hoursPerDay,
+            HoursPerWeek: hoursPerWeek,
+            HoursPerMonth: hoursPerMonth,
+            HoursPerYear: hoursPerYear,
+            DayOrDate: date,
+            StartTime: '',
+            FinishTime: '',
+          });
+        } else {
+          for (const wt of workTimes) {
+            calendarArr.push({
+              Type: 'Holiday',
+              CalendarName: calendarName,
+              ObjectId: objectId,
+              HoursPerDay: hoursPerDay,
+              HoursPerWeek: hoursPerWeek,
+              HoursPerMonth: hoursPerMonth,
+              HoursPerYear: hoursPerYear,
+              DayOrDate: date,
+              StartTime: wt.Start ?? '',
+              FinishTime: wt.Finish ?? '',
+            });
+          }
+        }
+      }
+    }
+
 
     if (tagName === 'BaselineProject') {
       baselineProjectArr.push(obj);
@@ -120,6 +222,7 @@ self.onmessage = async (e: MessageEvent<File>) => {
         projectArray: projectArr,
         resourceArray: resourceArr,
         wbsArray: wbsArr,
+        calendarArray: calendarArr
       },
     });
   } catch (err: any) {
