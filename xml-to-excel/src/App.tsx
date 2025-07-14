@@ -522,30 +522,30 @@ function App() {
 
           //Sending Calendar Data
           setMessage('Sending Calendar data...');
-          await sendChunks(calendarArray, extractCalendarFields, `${baseUrl}/p6calendars`, 'calendars', 16);
+          await sendChunks(calendarArray, extractCalendarFields, `${baseUrl}/p6calendars`, 'calendars', 13.33);
 
           setMessage('Sending Resource data...');
-          await sendChunks(resourceArray, extractResourceFields, `${baseUrl}/p6resources`, 'resources', 16);
+          await sendChunks(resourceArray, extractResourceFields, `${baseUrl}/p6resources`, 'resources', 13.33);
 
           setMessage('Sending Project data...');
           for (const record of projectArray) {
             const obj = extractProjectFields(record);
             await sendRecord(`${baseUrl}/projects`, obj, token);
           }
-          updateProgress(16);
+          updateProgress(13.33);
 
           setMessage('Sending WBS data...');
-          await sendChunks(wbsArray, extractWBSFields, `${baseUrl}/p6wbsstagingroots`, 'wbss', 16);
+          await sendChunks(wbsArray, extractWBSFields, `${baseUrl}/p6wbsstagingroots`, 'wbss', 13.33);
 
           setMessage('Sending Activity data...');
           const allActivities = [
             ...activityArray.map((item: any) => ({ ...item, activityType: 'Project' })),
             ...baselineActivityArray.map((item: any) => ({ ...item, activityType: 'BaseLine' })),
           ];
-          await sendChunks(allActivities, extractActivityFields, `${baseUrl}/p6activityroots`, 'activitys', 16);
+          await sendChunks(allActivities, extractActivityFields, `${baseUrl}/p6activityroots`, 'activitys', 13.33);
 
           setMessage('Sending ResourceAssignment data...');
-          await sendChunks(resourceAssignmentArray, extractResourceAssignmentFields, `${baseUrl}/p6resourceassignmentroots`, 'resourceassignments', 16);
+          await sendChunks(resourceAssignmentArray, extractResourceAssignmentFields, `${baseUrl}/p6resourceassignmentroots`, 'resourceassignments', 13.33);
 
 
 
