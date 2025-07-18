@@ -525,9 +525,9 @@ function App() {
                   return rec !== null;
                 });
 
-              console.log("chunk: ", chunk);
+              // console.log("chunk: ", chunk);
               if (chunk.length > 0) {
-                // await sendChunk(url, chunk, token, key);
+                await sendChunk(url, chunk, token, key);
               }
 
               updateProgress(progressIncrement / totalChunks);
