@@ -10,6 +10,14 @@ function App() {
     const today = new Date().toISOString().split('T')[0];
     return today;
   });
+
+  // ✅ Then use it in useRef
+  const selectedDateRef = useRef<string>(selectedDate);
+
+  // ✅ Keep the ref in sync with latest state
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+  }, [selectedDate]);
   const chunkSize = 500;
   const environment = '50b7a7db-965b-4a2e-8f58-39e635bf39b5';
   const companyId = '9f813277-f624-f011-9af7-002248cb4a4f';
@@ -84,7 +92,7 @@ function App() {
     return value.replace(/\./g, ':');
   }
 
-  const extractCalendarFields = (record: any) => ({
+  const extractCalendarFields = (record: any,selectedDate:string) => ({
     objectId: parseIntOrNull(record?.ObjectId),
     uploadDate: selectedDate,
     name: record?.CalendarName || '',
@@ -101,7 +109,7 @@ function App() {
     finish: normalizeTime(record?.FinishTime),
   });
 
-  const extractActivityFields = (record: any) => ({
+  const extractActivityFields = (record: any,selectedDate:string) => ({
     objectId: parseIntOrNull(textVal(record?.ObjectId)),
     guid: isValidGuid(textVal(record?.GUID)) ? textVal(record.GUID) : null,
     id: textVal(record?.Id) || '',
@@ -182,7 +190,7 @@ function App() {
 
 
 
-  const extractResourceAssignmentFields = (record: any) => ({
+  const extractResourceAssignmentFields = (record: any,selectedDate:string) => ({
     ObjectId: parseIntOrNull(textVal(record?.ObjectId)),
     guid: isValidGuid(textVal(record?.GUID)) ? textVal(record?.GUID) : null,
     ProjectObjectId: parseIntOrNull(textVal(record?.ProjectObjectId)),
@@ -246,7 +254,7 @@ function App() {
 
 
 
-  const extractProjectFields = (record: any) => ({
+  const extractProjectFields = (record: any,selectedDate:string) => ({
     objectId: parseIntOrNull(textVal(record?.ObjectId)),
     wbsObjectId: parseIntOrNull(textVal(record?.WBSObjectId)),
     actDefCalendarObjectId: parseIntOrNull(textVal(record?.ActivityDefaultCalendarObjectId)),
@@ -342,7 +350,7 @@ function App() {
     return null;
   };
 
-  const extractResourceFields = (record: any) => ({
+  const extractResourceFields = (record: any,selectedDate:string) => ({
     objectId: parseIntOrNull(textVal(record?.ObjectId)),
     autoComputeActuals: parseBool(textVal(record?.AutoComputeActuals)),
     calculateCostFromUnits: parseBool(textVal(record?.CalculateCostFromUnits)),
@@ -379,7 +387,7 @@ function App() {
 
 
 
-  const extractWBSFields = (record: any) => ({
+  const extractWBSFields = (record: any,selectedDate:string) => ({
     ProjectObjectId: textVal(record?.ProjectObjectId),
     ObjectId: parseIntOrNull(textVal(record?.ObjectId)),
     ParentObjectId: parseIntOrNull(textVal(record?.ParentObjectId)),
@@ -492,6 +500,12 @@ function App() {
             }
           };
 
+
+          const bindSelectedDate = (
+  extractor: (record: any, date: string) => any,
+  date: string
+) => (record: any) => extractor(record, date);
+
           const sendChunks = async (
             array: any[],
             extractFn: any,
@@ -511,42 +525,76 @@ function App() {
                   return rec !== null;
                 });
 
-              // console.log("chunk: ", chunk);
+              console.log("chunk: ", chunk);
               if (chunk.length > 0) {
-                await sendChunk(url, chunk, token, key);
+                // await sendChunk(url, chunk, token, key);
               }
 
               updateProgress(progressIncrement / totalChunks);
             }
           };
 
-          //Sending Calendar Data
-          setMessage('Sending Calendar data...');
-          await sendChunks(calendarArray, extractCalendarFields, `${baseUrl}/p6calendars`, 'calendars', 13.33);
+// Sending Calendar Data
+setMessage('Sending Calendar data...');
+await sendChunks(
+  calendarArray,
+  bindSelectedDate(extractCalendarFields, selectedDateRef.current),
+  `${baseUrl}/p6calendars`,
+  'calendars',
+  13.33
+);
 
-          setMessage('Sending Resource data...');
-          await sendChunks(resourceArray, extractResourceFields, `${baseUrl}/p6resources`, 'resources', 13.33);
+// Sending Resource Data
+setMessage('Sending Resource data...');
+await sendChunks(
+  resourceArray,
+  bindSelectedDate(extractResourceFields, selectedDateRef.current),
+  `${baseUrl}/p6resources`,
+  'resources',
+  13.33
+);
 
-          setMessage('Sending Project data...');
-          for (const record of projectArray) {
-            const obj = extractProjectFields(record);
-            await sendRecord(`${baseUrl}/projects`, obj, token);
-          }
-          updateProgress(13.33);
+// Sending Project Data (already OK)
+setMessage('Sending Project data...');
+for (const record of projectArray) {
+  const obj = extractProjectFields(record, selectedDateRef.current);
+  await sendRecord(`${baseUrl}/projects`, obj, token);
+}
+updateProgress(13.33);
 
-          setMessage('Sending WBS data...');
-          await sendChunks(wbsArray, extractWBSFields, `${baseUrl}/p6wbsstagingroots`, 'wbss', 13.33);
+// Sending WBS Data
+setMessage('Sending WBS data...');
+await sendChunks(
+  wbsArray,
+  bindSelectedDate(extractWBSFields, selectedDateRef.current),
+  `${baseUrl}/p6wbsstagingroots`,
+  'wbss',
+  13.33
+);
 
-          setMessage('Sending Activity data...');
-          const allActivities = [
-            ...activityArray.map((item: any) => ({ ...item, activityType: 'Project' })),
-            ...baselineActivityArray.map((item: any) => ({ ...item, activityType: 'BaseLine' })),
-          ];
-          await sendChunks(allActivities, extractActivityFields, `${baseUrl}/p6activityroots`, 'activitys', 13.33);
+// Sending Activity Data
+setMessage('Sending Activity data...');
+const allActivities = [
+  ...activityArray.map((item: any) => ({ ...item, activityType: 'Project' })),
+  ...baselineActivityArray.map((item: any) => ({ ...item, activityType: 'BaseLine' })),
+];
+await sendChunks(
+  allActivities,
+  bindSelectedDate(extractActivityFields, selectedDateRef.current),
+  `${baseUrl}/p6activityroots`,
+  'activitys',
+  13.33
+);
 
-          setMessage('Sending ResourceAssignment data...');
-          await sendChunks(resourceAssignmentArray, extractResourceAssignmentFields, `${baseUrl}/p6resourceassignmentroots`, 'resourceassignments', 13.33);
-
+// Sending ResourceAssignment Data
+setMessage('Sending ResourceAssignment data...');
+await sendChunks(
+  resourceAssignmentArray,
+  bindSelectedDate(extractResourceAssignmentFields, selectedDateRef.current),
+  `${baseUrl}/p6resourceassignmentroots`,
+  'resourceassignments',
+  13.33
+);
 
 
           setMessage('✅ All data successfully sent to Business Central.');
