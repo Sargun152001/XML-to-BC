@@ -554,7 +554,7 @@ await sendChunks(
   13.33
 );
 
-// Sending Project Data (already OK)
+// Sending Project Data 
 setMessage('Sending Project data...');
 for (const record of projectArray) {
   const obj = extractProjectFields(record, selectedDateRef.current);
