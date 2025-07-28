@@ -21,7 +21,7 @@ function App() {
   const chunkSize = 500;
   const environment = '50b7a7db-965b-4a2e-8f58-39e635bf39b5';
   const companyId = '9f813277-f624-f011-9af7-002248cb4a4f';
-  const baseUrl = `https://api.businesscentral.dynamics.com/v2.0/${environment}/Dev/api/alletec/primavera/v2.0/companies(${companyId})`;
+  const baseUrl = `https://api.businesscentral.dynamics.com/v2.0/${environment}/UAT/api/alletec/primavera/v2.0/companies(${companyId})`;
 
   async function getAccessToken(): Promise<string> {
     // const response = await fetch('http://localhost:3001/token', {
